@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthorized() {
+      return request.auth != null &&
+        request.auth.token.email != null &&
+        exists(/databases/$(database)/documents/access/$(request.auth.token.email));
+    }
+
+    // Manage the allow-list by hand in the Firestore console: one doc per
+    // person, doc ID = their exact Google account email.
+    match /access/{email} {
+      allow read: if isAuthorized();
+      allow write: if false;
+    }
+
+    match /plants/{plantId} {
+      allow read, write: if isAuthorized();
+
+      match /checkIns/{checkInId} {
+        allow read, write: if isAuthorized();
+      }
+    }
+
+    match /config/{docId} {
+      allow read, write: if isAuthorized();
+    }
+  }
+}
